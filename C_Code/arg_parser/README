@@ -1,0 +1,33 @@
+Description
+
+Arg_parser is an argument parser that follows POSIX and GNU conventions
+for command line arguments. There exist C++ and C versions of
+Arg_parser. The C++ version is implemented as a C++ class, while the C
+version is implemented as a single struct plus associated functions.
+Both are simpler, easier to use, and safer that 'getopt_long'.
+
+For maximum stability, Arg_parser is self-contained. It extracts all the
+information it needs from its arguments to avoid refering to them later.
+This avoids index-out-of-bounds errors.
+
+Arg_parser does not modify its arguments, nor uses any global variables.
+So you may create more than one parser in your program if you need or
+want to.
+
+The C++ version of Arg_parser can also parse options from configuration
+files.
+
+To use Arg_parser in your own programs simply copy the files
+'arg_parser.h' and 'arg_parser.cc' (or 'carg_parser.h' and
+'carg_parser.c' for the C version) in your source tree. See also the
+file 'main.cc' ('cmain.c') for an example of use.
+
+
+Copyright (C) 2006-2015 Antonio Diaz Diaz.
+
+This file is free documentation: you have unlimited permission to copy,
+distribute and modify it.
+
+The file Makefile.in is a data file used by configure to produce the
+Makefile. It has the same copyright owner and permissions that configure
+itself.

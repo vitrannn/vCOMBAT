@@ -1,0 +1,8 @@
+option '--append'
+option '--block' with argument '5'
+option '--casual'
+option '--casual' with argument 'arg'
+option '-o' with argument 'file'
+option '--orphan'
+non-option argument 'file1'
+non-option argument 'file2'

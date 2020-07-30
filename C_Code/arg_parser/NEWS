@@ -1,0 +1,7 @@
+Changes in version 1.11:
+
+C language functions have been documented in the manual.
+
+The targets "install-compress", "install-strip-compress",
+"install-info-compress" and "install-man-compress" have been added to
+the Makefile.

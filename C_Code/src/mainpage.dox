@@ -1,0 +1,31 @@
+/**
+\mainpage Tuberculosis simulator
+
+<h2>Invocation options</h2>
+<table>
+	<tr><th colspan=2>General options</th></tr>
+	<tr><td><code>-h, --help</code></td><td>Display usage instructions on the terminal.</td></tr>
+	<tr><td><code>-v, --verbose</code></td><td>Display extra information, to the terminal, during program run.</td></tr>
+
+	<tr><th colspan=2>Simulation Parameters</th></tr>
+	<tr><td><code>-d, --startingAntibiotic [dose]</code></td><td>Initial dose of antibiotic (in the extracellular medium).</td></tr>
+	<tr><td><code>-p, --startingPopulation [pop]</code></td><td>Initial population of bacteria with no bound targets.</td></tr>
+	<tr><td><code>-S, --steppingFunction [function]</code></td><td>Stepping function to use for the integration where [function] is one of {rk4, rkf45, rkck}.</td></tr>
+	<tr><td><code>-t, --time [etime]:[intvl]</code></td><td>Specifies total simulation time [etime] and interval between time-points [intvl].</td></tr>
+
+	<tr><th colspan=2>Model Parameters</th></tr>
+	<tr><td><code>-n, --targetMoleculeCount [mols]</code></td><td>Number of target molecules per cell.</td></tr>
+	<tr><td><code>-r, --replicationThreshold [mols]</code></td><td>Number of bound target molecules in a cell to prevent replication.</td></tr>
+	<tr><td><code>-R, --baselineReplicationRate [rate]</code></td><td>Rate of replication for those bacteria below replication threshold.</td></tr>
+	<tr><td><code>-k, --killingThreshold [mols]</code></td><td>Number of bound target molecules in a cell to cause death.</td></tr>
+	<tr><td><code>-K, --maximumKillingRate [rate]</code></td><td>Rate of death for those bacteria above killing threshold.</td></tr>
+	<tr><td><code>-A, --targetAssociationRate [rate]</code></td><td>Rate constant for association between target and antibiotic.</td></tr>
+	<tr><td><code>-D, --targetDissociationRate [rate]</code></td><td>Rate constant for dissociation of target/antibiotic complex.</td></tr>
+	<tr><td><code>-V, --intracellularVolume [size]</code></td><td>Internal volume of a bacterium.</td></tr>
+	<tr><td><code>-C, --carryingCapacity [pop]</code></td><td>Carrying capacity (maximum population) of the system.</td></tr>
+	
+	<tr><th colspan=2>Data output options</th></tr>
+	<tr><td><code>-o, --outputFile [ofile]</code></td><td>Write final output to [ofile].</td></tr>
+</table>
+
+*/
