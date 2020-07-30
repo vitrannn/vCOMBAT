@@ -1,4 +1,4 @@
-@Written by Vi Tran on June 2019
+@Written by Vi Tran on June 2020
 All the commands below are Unix commands and can be performed with Mac Terminal or Unix Shell or Cygwin in Windows.
 
 Before running the code, the system needs to have a list of software properly installed. The list of software and how to install them are described in "installation_requirement.docx" document.
