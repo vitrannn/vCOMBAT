@@ -1,74 +1,74 @@
-API interface endpoint to "tuberculosis_simulation"
-========================================
+@Written by Vi Tran on June 2019
+All the commands below are Unix commands and can be performed with Mac Terminal or Unix Shell or Cygwin in Windows.
+
+Before running the code, the system needs to have a list of software properly installed. The list of software and how to install them are described in "installation_requirement.docx" document.
+
+1.	How to compile (build the executable files):
+
+•	Get to the code folder
+
+$ ls
+C_Code
+bin
+compileCode.sh
+inputsample.txt
+output_from_C
+output_from_R
+
+•	Build and Compile the code
+$ ./compileCode.sh
+Expected to see:
+	changing directory..
+	erasing stuff..
+	cmaking..
+	-- The C compiler identification is GNU 8.3.0
+	-- The CXX compiler identification is GNU 8.3.0
+
+Make sure the C and CXX compiler is GNU version 8 or higher. 
+
+If you are using Mac and the working C compiler is the default clang gcc by MacOS, we need to link the working gcc with the newly installed GNU gcc. We do so by changing CC and CXX to the installed gcc location. For example, link gcc to the installed gcc version 8  at /usr/local/bin/gcc-8 and /usr/local/bin/g++-8 as in the following commands. 
+
+$ export CC=/usr/local/bin/gcc-8
+$ export CXX=/usr/local/bin/g++-8
+$ export PATH=/usr/bin:/usr/local/bin:$PATH
+
+2.	How to run
+Run executable file tuberculosis_simulation from the C code folder 
+$ cd ..
+$./bin/tuberculosis_simulation -d 1000000 -p 100000  -t 100:1 -n 100 -R 0  -K 0  -A 1  -D 0.01  -V 0.000000000000001  -C 1000000 -k 50 -r 50 -m output3_100_t100_sp1.csv -i A_input3_100_t100_sp1.csv -v
 
 
-Requirements:
-========================================
-* PHP 5
-* "tuberculosis_simulation" executable
-* "inputsample.txt" file with data (one float value per line)
+Each parameter called by the C code is explained in ModelParameterinCode.docx document. The simulation takes the external concentrations from A_input3_100_t100_sp1.csv. The mathematical output results are stored in output3_100_t100_sp1.csv in the same folder.
 
+3.	Expected results running with above parameters in command line console
 
-Setup:
-========================================
-* Organize the files as follows:
-./
-    bin/
-        tuberculosis_simulation
-    api.php
-    inputsample.txt
+Starting simulation with arguments
+------------------------------------
 
-* For information on compiling and linking of "tuberculosis_simulation" source code refer to "tuberculosis_simulation" documentation. Ideally the steps are:
-$ cd project_root
-$ cmake .
-$ make
-# then copy produced executable file
+Starting population     	100000
+Antibiotic dose         	1e+06
+Time of simulation      	100
+Step size               	1
 
+Target molecules        	100
+Maximum kill rate       	0
+Killing threshold       	50
+Baseline replication    	0
+Target association rate 	1
+Target dissociation rate	0.01
+Drug Molecular Weight    	555.5
+Carrying capacity       	1e+06
+Intracellular volume    	1e-15
+Outputing compartmentBoundComplexState matrix to simCode/output3_100_t100_sp1.csv
+Output File order is as follows:
+L0 Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Li Ln tm BP An AT 
 
-Input:
-========================================
-POST JSON request. Optional parameters (case sensitive):
-{
-    'V': intracellularVolume,
-    'n': targetMoleculeCount,
-    'r': replicationThreshold,
-    'k': killingThreshold,
-    'R': baselineReplicationRate,
-    'K': maximumKillingRate,
-    'A': targetAssociationRate,
-    'D': targetDissociationRate,
-    'C': carryingCapacity,
-    't': time,
-    'd': startingAntibiotic,
-    'M': AntibioticMolWeight,
-    'p': startingPopulation,
-    'S': steppingFunction,
-}
+creating system with 104 free variables
+Results readout
+---------------
 
-For more information refer to "tuberculosis_simulation" documentation.
+Final population 100000
 
+It took me (9.858000 milliseconds).
 
-Output:
-========================================
-On Success:
-    status: 200
-    body:
-        JSON:
-            {
-                "verbose": string, the std console output "tuberculosis_simulation" produces; for more information refer to "tuberculosis_simulation" documentation.
-                "output": 2-dimensional array of floats, the output file "tuberculosis_simulation" produces when called with "-m" key; for more information refer to "tuberculosis_simulation" documentation.
-            }
-On Failure:
-    status: 500
-    body:
-        error message string
-
-
-Run:
-========================================
-php -S localhost:8888 api.php
-
-
-Test:
-========================================
-curl -X POST -H "Content-Type: application/json" -d '{ "d": 10, "p": 1000 }' "http://localhost:8888/"
+=============================
