@@ -1,11 +1,39 @@
-@Written by Vi Tran on June 2020
-All the commands below are Unix commands and can be performed with Mac Terminal or Unix Shell or Cygwin in Windows.
+@Written by Vi Tran on June 2020, modified on December 2021.
+All the commands below are Unix commands and can be run with Mac Terminal or Unix Shell or Cygwin in Windows.
 
-Before running the code, the system needs to have a list of software properly installed. The list of software and how to install them are described in "installation_requirement.docx" document.
+1. To run our C code you need to install following packages/libraries. All the libraries need to be installed on your system. You don’t need to keep track of installation folder because the written FindLIBYAML file will automatically finds the installed libraries.
+	a. GNU Scientific Library (GSL) 
+For Mac
+http://macappstore.org/gsl/
+For Unix /Cygwin, use the appropriate package manager of your system, an example is apt/get
+$ sudo apt-get install libgsl-dev
+	b. Doxygen 
+For Mac
+http://macappstore.org/doxygen/
+For Unix /Cygwin
+$ sudo apt-get install doxygen
+	c. PkgConfig 
+For Mac
+http://macappstore.org/pkg-config/ 
+For Unix/Cygwin
+$ sudo apt-get install pkg-config
+	d. Yaml-cpp
+For Mac
+http://macappstore.org/yaml-cpp/
+For Unix/Cygwin
+$ sudo apt-get install libyaml-cpp-dev
+	e. Yaml Library
+For Mac 
+http://macappstore.org/libyaml/
+For Unix/Cygwin
+$ sudo apt-get install libyaml-dev
+	f. CMake
+	g. GNU GCC must be version 8 or higher.  
 
-1.	How to compile (build the executable files):
 
-•	Get to the code folder
+2.	How to compile (build the executable files):
+
+2.1	Get to the code folder
 
 $ ls
 C_Code
@@ -15,7 +43,7 @@ inputsample.txt
 output_from_C
 output_from_R
 
-•	Build and Compile the code
+2.2	Build and Compile the code
 $ ./compileCode.sh
 Expected to see:
 	changing directory..
@@ -32,7 +60,7 @@ $ export CC=/usr/local/bin/gcc-8
 $ export CXX=/usr/local/bin/g++-8
 $ export PATH=/usr/bin:/usr/local/bin:$PATH
 
-2.	How to run
+3.	How to run
 Run executable file tuberculosis_simulation from the C code folder 
 $ cd ..
 $./bin/tuberculosis_simulation -d 1000000 -p 100000  -t 100:1 -n 100 -R 0  -K 0  -A 1  -D 0.01  -V 0.000000000000001  -C 1000000 -k 50 -r 50 -m output3_100_t100_sp1.csv -i A_input3_100_t100_sp1.csv -v
@@ -40,7 +68,7 @@ $./bin/tuberculosis_simulation -d 1000000 -p 100000  -t 100:1 -n 100 -R 0  -K 0 
 
 Each parameter called by the C code is explained in ModelParameterinCode.docx document. The simulation takes the external concentrations from A_input3_100_t100_sp1.csv. The mathematical output results are stored in output3_100_t100_sp1.csv in the same folder.
 
-3.	Expected results running with above parameters in command line console
+4.	Expected results running with above parameters in command line console
 
 Starting simulation with arguments
 ------------------------------------
