@@ -1,39 +1,8 @@
 @Written by Vi Tran on June 2020, modified on December 2021.
 All the commands below are Unix commands and can be run with Mac Terminal or Unix Shell or Cygwin in Windows.
 
-1. To run our C code you need to install following packages/libraries. All the libraries need to be installed on your system. You don’t need to keep track of installation folder because the written FindLIBYAML file will automatically finds the installed libraries.
-	a. GNU Scientific Library (GSL) 
-For Mac
-http://macappstore.org/gsl/
-For Unix /Cygwin, use the appropriate package manager of your system, an example is apt/get
-$ sudo apt-get install libgsl-dev
-	b. Doxygen 
-For Mac
-http://macappstore.org/doxygen/
-For Unix /Cygwin
-$ sudo apt-get install doxygen
-	c. PkgConfig 
-For Mac
-http://macappstore.org/pkg-config/ 
-For Unix/Cygwin
-$ sudo apt-get install pkg-config
-	d. Yaml-cpp
-For Mac
-http://macappstore.org/yaml-cpp/
-For Unix/Cygwin
-$ sudo apt-get install libyaml-cpp-dev
-	e. Yaml Library
-For Mac 
-http://macappstore.org/libyaml/
-For Unix/Cygwin
-$ sudo apt-get install libyaml-dev
-	f. CMake
-	g. GNU GCC must be version 8 or higher.  
 
-
-2.	How to compile (build the executable files):
-
-2.1	Get to the code folder
+1	Get to the code folder
 
 $ ls
 C_Code
@@ -43,7 +12,7 @@ inputsample.txt
 output_from_C
 output_from_R
 
-2.2	Build and Compile the code
+2	Build and Compile the code
 $ ./compileCode.sh
 Expected to see:
 	changing directory..
