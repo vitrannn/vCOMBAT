@@ -174,7 +174,7 @@ int main(const int argc, char** argv) {
 		case 'd':
 			sscanf(ap_argument(&parser, argIdx), "%lg", &sParam.startingAntibiotic);
 			break;
-                case 'M':
+		case 'M':
 			sscanf(ap_argument(&parser, argIdx), "%lg", &mParam.molecularweight);
 			break;
 		case 'p':
@@ -225,14 +225,27 @@ int main(const int argc, char** argv) {
      // Reading Antibiotic Concentartion from "input" file 
     FILE* myFile;
     myFile = fopen(inputFile, "r");
+	if (myFile == NULL) {
+		fprintf(stderr, "Could not open %s for reading\n", inputFile);
+        return EXIT_FAILURE;
+	}
     int x;
     
     for (x = 0; x<mParam.timepoints;x++){
-    fscanf(myFile, "%lg", &mParam.realantibioticconc[x]);  
-    // Old code: Changing nG/mL to number of molecules: A*1e3*1e-6*6.02e23/MW    //mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e17*mParam.intracellularVolume/mParam.molecularweight;
-        
-    // Newcode by Vi 
-    mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e20*mParam.intracellularVolume/mParam.molecularweight;
+		int parse_success;
+		if (feof(myFile)) {
+			fprintf(stderr,"File ended while attempting to scan entry %d\n",x+1);
+			return EXIT_FAILURE;
+		}
+		parse_success = fscanf(myFile, "%lg", &mParam.realantibioticconc[x]);
+		if (parse_success != 1){
+			fprintf(stderr,"Parsing of entry %d failed\n",x+1);
+			return EXIT_FAILURE;
+		}
+		// Old code: Changing nG/mL to number of molecules: A*1e3*1e-6*6.02e23/MW    //mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e17*mParam.intracellularVolume/mParam.molecularweight;
+			
+		// Newcode by Vi 
+		mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e20*mParam.intracellularVolume/mParam.molecularweight;
 
     }
     fclose(myFile);
@@ -446,8 +459,8 @@ static void displayHelp(const char* programName) {
 	       "   -p, --startingPopulation [population]    : Initial bacterial population.\n"
 	       "                                         default: %lg\n"
 	       "   -S, --steppingFunction [function] : Stepping function to use for the numerical integration.\n"
-	       "                                         where [function] is one of {rk4, rkf45, rkck}\n"
-	       "                                         default: rkck\n"
+	       "                                         where [function] is one of {rk4, rkf45, rkck, rk2}\n"
+	       "                                         default: rk2\n"
 	       "   -t, --time [etime (s)]:[intvl (s)]   : Specifies total simulation time [etime] and interval between time-points [intvl].\n"
 	       "                                         default: %lg:%lg\n\n",
 	       DEFAULT_STARTING_ANTIBIOTIC, DEFAULT_STARTING_POPULATION, DEFAULT_SIMULATION_END_TIME, DEFAULT_SIMULATION_STEP_SIZE);
@@ -455,8 +468,11 @@ static void displayHelp(const char* programName) {
 	printf("                                 MODEL PARAMETERS\n\n"
 	       "   -n, --targetMoleculeCount [Integer Number]     : Number of target molecules in a cell.\n"
 	       "                                            default: %d\n"
-               "   -R, --baselineReplicationRate [rate (1/s)] : Rate of replication for those bacteria below replication threshold.\n"
+		   "   -r, --replicationThreshold [FC*n=Integer Number]     : Number of bound target molecules in a cell to stop relications.\n"
+	       "                                            default: n / 2\n"
+		   "   -R, --baselineReplicationRate [rate (1/s)] : Rate of replication for those bacteria below replication threshold.\n"
 	       "                                            default: %lg\n"
+		   
 	       "   -k, --killingThreshold [FC*n=Integer Number]     : Number of bound target molecules in a cell to cause death.\n"
 	       "                                            default: n / 2\n"
 	       "   -K, --maximumKillingRate [rate (1/s)]      : Rate of death for those bacteria above killing threshold.\n"
@@ -487,12 +503,12 @@ static int outputResultsToFile(SimulationParameters sParam, ModelParameters mPar
 	yaml_emitter_t emitter;
 	yaml_event_t event;
 	
-	// Intiialize the YAML emitter
+	// Intialize the YAML emitter
 	yaml_emitter_initialize(&emitter);
 	yaml_emitter_set_output_file(&emitter, oHandle);
 	yaml_emitter_set_unicode(&emitter, 1);
 	
-	// Intiialize the YAML stream
+	// Intialize the YAML stream
 	yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING);
 	EMIT_YAML_EVENT;
 	
