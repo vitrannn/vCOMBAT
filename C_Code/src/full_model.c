@@ -67,14 +67,23 @@ int calculateModelDerivative_BindingOnly (double curTime,
 	double tmpSum;
 	double* incPointer;
 	
-     //Vi moved from line 150
-    int timetocon;
-    double yfreeAntibiotic;
-    timetocon=((int)floorl(curTime/param->steptime));
+	double yfreeAntibiotic;
+	if (param->extendedModel) {
+     	//Vi moved from line 150
+		int timetocon;
+		timetocon=((int)floorl(curTime/param->steptime));
     
-    // Free Antibiotic Concentrations come from input file, change from yfreeAntibiotic to yfreeAntibiotic by declaring a new code variable
-	yfreeAntibiotic = (curTime-timetocon*param->steptime)*(param->realantibioticconc[timetocon+1] - param->realantibioticconc[timetocon])/param->steptime +param->realantibioticconc[timetocon];
-    //end change--------------
+		// Free Antibiotic Concentrations come from input file, change from yfreeAntibiotic to yfreeAntibiotic by declaring a new code variable
+		// Makes a linear interpolation of the antibiotic concentrations
+		yfreeAntibiotic = (curTime-timetocon*param->steptime)*(param->realantibioticconc[timetocon+1] - param->realantibioticconc[timetocon])/param->steptime +param->realantibioticconc[timetocon];
+
+		//end change--------------
+	} else {
+		yfreeAntibiotic = param->;
+	}
+    
+    
+    
     
 	// Calculation of $\frac{k_f}{n_AV_i}$
 	scratchVolumeModifiedK = param->targetAssociationRate / (AVOGADRO_CONSTANT * param->intracellularVolume);

@@ -26,6 +26,7 @@ static const char* invocationName = NULL; ///< The full invocation text for the 
 static char* programName; ///< The basename of the program invocation
 int verbose = 0; ///< Specifies whether the program should display verbose output
 
+
 static void argParserShowError(const char* const msg, const int errorCode, const char help);
 static void argParserInternalError(const char* const msg);
 static const char* optname(const int code, const struct ap_Option options[]);
@@ -75,9 +76,11 @@ int main(const int argc, char** argv) {
 		.nonSpecificAssociationRate = DEFAULT_NONSPECIFIC_ASSOCIATION_RATE,
 		.nonSpecificDissociationRate = DEFAULT_NONSPECIFIC_DISSOCIATION_RATE,
 		.timepoints = DEFAULT_TIMEPOINTS,
+		.extendedModel = 0,  
                 .molecularweight= DEFAULT_MOLECULARWEIGHT,
                 .steptime = DEFAULT_STEPTIME,
                 .carryingCapacity = DEFAULT_CARRYING_CAPACITY,
+		.staticAntibioticConcentration = (double) DEFAULT_DUMMY,
 		.hyperGeometricMatrix = NULL,
 	};
     
@@ -221,35 +224,41 @@ int main(const int argc, char** argv) {
     double realantibioticconc[mParam.timepoints];
     
     mParam.steptime= sParam.stepSize; 
-     
-     // Reading Antibiotic Concentartion from "input" file 
-    FILE* myFile;
-    myFile = fopen(inputFile, "r");
-	if (myFile == NULL) {
-		fprintf(stderr, "Could not open %s for reading\n", inputFile);
-        return EXIT_FAILURE;
-	}
-    int x;
-    
-    for (x = 0; x<mParam.timepoints;x++){
-		int parse_success;
-		if (feof(myFile)) {
-			fprintf(stderr,"File ended while attempting to scan entry %d\n",x+1);
-			return EXIT_FAILURE;
-		}
-		parse_success = fscanf(myFile, "%lg", &mParam.realantibioticconc[x]);
-		if (parse_success != 1){
-			fprintf(stderr,"Parsing of entry %d failed\n",x+1);
-			return EXIT_FAILURE;
-		}
-		// Old code: Changing nG/mL to number of molecules: A*1e3*1e-6*6.02e23/MW    //mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e17*mParam.intracellularVolume/mParam.molecularweight;
-			
-		// Newcode by Vi 
-		mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e20*mParam.intracellularVolume/mParam.molecularweight;
 
-    }
-    fclose(myFile);
-    myFile=NULL;
+	if (inputFile != NULL) { 
+		mParam.extendedModel = 1;
+		printf("Running extended model with input file %s",inputFile);
+		// Reading Antibiotic Concentartion from "input" file 
+		FILE* myFile;
+		myFile = fopen(inputFile, "r");
+		if (myFile == NULL) {
+			fprintf(stderr, "Could not open %s for reading\n", inputFile);
+			return EXIT_FAILURE;
+		}
+		int x;
+		
+		for (x = 0; x<mParam.timepoints;x++){
+			int parse_success;
+			if (feof(myFile)) {
+				fprintf(stderr,"File ended while attempting to scan entry %d\n",x+1);
+				return EXIT_FAILURE;
+			}
+			parse_success = fscanf(myFile, "%lg", &mParam.realantibioticconc[x]);
+			if (parse_success != 1){
+				fprintf(stderr,"Parsing of entry %d failed\n",x+1);
+				return EXIT_FAILURE;
+			}
+			// Old code: Changing nG/mL to number of molecules: A*1e3*1e-6*6.02e23/MW    //mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e17*mParam.intracellularVolume/mParam.molecularweight;
+				
+			// Newcode by Vi 
+			mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e20*mParam.intracellularVolume/mParam.molecularweight;
+
+		}
+		fclose(myFile);
+		myFile=NULL;
+	} else {
+		mParam.staticAntibioticConcentration = sParam.startingAntibiotic*6.02e20*mParam.intracellularVolume/mParam.molecularweight;
+	}
     
     //-------------------------------------------------------------------------
     
@@ -279,7 +288,9 @@ int main(const int argc, char** argv) {
 		printf("\nStarting simulation with arguments\n");
 		printf("------------------------------------\n\n");
 		printf("Starting population     \t%lg\n", sParam.startingPopulation);
-		//printf("Antibiotic dose         \t%lg\n", sParam.startingAntibiotic);
+		if (!mParam.extendedModel) {
+			printf("Antibiotic dose         \t%lg\n", sParam.startingAntibiotic);
+		}
 		printf("Time of simulation      \t%lg\n", sParam.endTime);
 		printf("Step size               \t%lg\n\n", sParam.stepSize);		
 		printf("Target molecules        \t%d\n", mParam.targetMoleculeCount);
@@ -289,7 +300,7 @@ int main(const int argc, char** argv) {
 		printf("Baseline replication    \t%lg\n", mParam.baselineReplication);
 		printf("Target association rate \t%lg\n", mParam.targetAssociationRate);
 		printf("Target dissociation rate\t%lg\n", mParam.targetDissociationRate);
-                printf("Drug Molecular Weight    \t%lg\n", mParam.molecularweight);
+		printf("Drug Molecular Weight    \t%lg\n", mParam.molecularweight);
 		printf("Carrying capacity       \t%lg\n", mParam.carryingCapacity);
 		printf("Intracellular volume    \t%lg\n", mParam.intracellularVolume);
 	}
@@ -477,7 +488,7 @@ static void displayHelp(const char* programName) {
 	       "                                            default: n / 2\n"
 	       "   -K, --maximumKillingRate [rate (1/s)]      : Rate of death for those bacteria above killing threshold.\n"
 	       "                                            default: %lg\n"
-               "   -M, --molecularweight [weight (gr/mol)]         : Drug Molecular Weight gram per mole.\n"
+           "   -M, --molecularweight [weight (gr/mol)]         : Drug Molecular Weight gram per mole.\n"
 	       "                                            default: %lg\n" 
 	       "   -A, --targetAssociationRate [rate (L/mol/s)]   : Rate constant for association between target and antibiotic.\n"
 	       "                                            default: %lg\n"

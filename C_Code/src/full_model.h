@@ -56,10 +56,13 @@ typedef struct  _ModelParameters {
 	double nonSpecificDissociationRate; ///< The k parameter for the backward reaction of non-specific binding.
 	double targetAssociationRate;       ///< The k parameter for the forward reaction of specific binding.
 	double targetDissociationRate;      ///< the k parameter for the backward reaction of specific binding.
+	int extendedModel = 0; // Specifies whether the program runs with an input file (extended model) or with a static total antibotic concentration (original model)
 	
 	double carryingCapacity;            ///< The total carrying capacity (maximum population) of the system.
 	double* hyperGeometricMatrix;       ///< The matrix containing the hypergeometric sampling PDFs.
-        double realantibioticconc[];
+    double realantibioticconc[]; // In number of molecules
+	double staticAntibioticConcentration; // In the case we are using the original model instead of the extended model
+
     //double *realantibioticconc; 
 }*ModelParameters;
 
