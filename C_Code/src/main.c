@@ -31,7 +31,7 @@ static void argParserShowError(const char* const msg, const int errorCode, const
 static void argParserInternalError(const char* const msg);
 static const char* optname(const int code, const struct ap_Option options[]);
 static void displayHelp(const char* programName);
-static int outputResultsToFile(SimulationParameters sParam, ModelParameters mParam, SimulationResults results, FILE* oHandle);
+static int outputResultsToFile(SimulationParameters* sParam, ModelParameters* mParam, SimulationResults* results, FILE* oHandle);
 
 #define DEFAULT_DUMMY -12345 ///< Definition of dummy value for marking those defaults which must be dynamically calculated
 #define STR_HELPER(x) #x
@@ -51,7 +51,7 @@ int main(const int argc, char** argv) {
 	clock_t t;
 	int argIdx;
 	struct Arg_parser parser;
-	double* stateVector = NULL;
+	ModelVariables* stateVector = NULL;
 	const char* outputFile = NULL;
     const char* outputFileM = NULL;
     const char* inputFile = NULL;
@@ -80,7 +80,7 @@ int main(const int argc, char** argv) {
                 .molecularweight= DEFAULT_MOLECULARWEIGHT,
                 .steptime = DEFAULT_STEPTIME,
                 .carryingCapacity = DEFAULT_CARRYING_CAPACITY,
-		.staticAntibioticConcentration = (double) DEFAULT_DUMMY,
+		.staticAntibioticConcentration = DEFAULT_STARTING_ANTIBIOTIC,
 		.hyperGeometricMatrix = NULL,
 	};
     
@@ -111,11 +111,11 @@ int main(const int argc, char** argv) {
 		{ 'C', "carryingCapacity",        ap_yes },
 		{ 't', "time",                    ap_yes },
 		{ 'd', "startingAntibiotic",      ap_yes },
-                { 'M', "Antibiotic Mol. Weight",  ap_yes },
+		{ 'M', "Antibiotic Mol. Weight",  ap_yes },
 		{ 'p', "startingPopulation",      ap_yes },
 		{ 'o', "outputFile",              ap_yes },
-                { 'm', "outputFileM",             ap_yes },
-                { 'i', "inputFile",               ap_yes },
+		{ 'm', "outputFileM",             ap_yes },
+		{ 'i', "inputFile",               ap_yes },
 		{ 'S', "steppingFunction",        ap_yes }
 	};
 	
@@ -227,7 +227,7 @@ int main(const int argc, char** argv) {
 
 	if (inputFile != NULL) { 
 		mParam.extendedModel = 1;
-		printf("Running extended model with input file %s",inputFile);
+		printf("Running extended model with input file %s\n",inputFile);
 		// Reading Antibiotic Concentartion from "input" file 
 		FILE* myFile;
 		myFile = fopen(inputFile, "r");
@@ -251,12 +251,13 @@ int main(const int argc, char** argv) {
 			// Old code: Changing nG/mL to number of molecules: A*1e3*1e-6*6.02e23/MW    //mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e17*mParam.intracellularVolume/mParam.molecularweight;
 				
 			// Newcode by Vi 
-			mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e20*mParam.intracellularVolume/mParam.molecularweight;
+			mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e20*mParam.intracellularVolume / mParam.molecularweight;
 
 		}
 		fclose(myFile);
 		myFile=NULL;
 	} else {
+		printf("Running without input file with initial antibioctic concentration %lg\n",sParam.startingAntibiotic);
 		mParam.staticAntibioticConcentration = sParam.startingAntibiotic*6.02e20*mParam.intracellularVolume/mParam.molecularweight;
 	}
     
@@ -364,8 +365,8 @@ int main(const int argc, char** argv) {
 	// Output a summary of results, if verbose-mode is specified
 	if (verbose) {
 		double populationSum = 0.0;
-		for (i = NUMBER_FREE_KINETIC_VARIABLES; i < mParam.targetMoleculeCount+NUMBER_FREE_KINETIC_VARIABLES + 1; ++i)
-			populationSum += stateVector[i];
+		for (i = 0; i < mParam.targetMoleculeCount + 1; ++i)
+			populationSum += stateVector->CompartmentBoundComplex[i];
 		printf("Results readout\n");
 		printf("---------------\n\n");
 		printf("Final population %g\n\n",populationSum);
@@ -510,7 +511,7 @@ static void displayHelp(const char* programName) {
 
 static int writeNamedDouble(yaml_emitter_t* emitter, yaml_event_t* event, char* name, double value);
 
-static int outputResultsToFile(SimulationParameters sParam, ModelParameters mParam, SimulationResults results, FILE* oHandle) {
+static int outputResultsToFile(SimulationParameters* sParam, ModelParameters* mParam, SimulationResults* results, FILE* oHandle) {
 	yaml_emitter_t emitter;
 	yaml_event_t event;
 	
