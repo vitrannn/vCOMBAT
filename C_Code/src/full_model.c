@@ -162,6 +162,10 @@ int calculateModelDerivative_BindingOnly (double curTime,
     // Calculation of $\frac{dA}{dt}$
 	if (!param->extendedModel) {
 		dydt->freeAntibiotic = (scratchSumReverse - scratchSumForward)- scratchAntibioticTarget;
+	} else{
+		// This is intended to prevent the ODE solver from getting confused from using an unintialized values for $\frac{dA}{dt}$,
+		// we ignore the result anyway
+		dydt->freeAntibiotic = 0.0;
 	}
 
 	// Calculation of $\frac{dT}{dt}$

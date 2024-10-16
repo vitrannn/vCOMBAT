@@ -258,7 +258,7 @@ int main(const int argc, char** argv) {
 		myFile=NULL;
 	} else {
 		printf("Running without input file with initial antibioctic concentration %lg\n",sParam.startingAntibiotic);
-		mParam.staticAntibioticConcentration = sParam.startingAntibiotic*6.02e20*mParam.intracellularVolume/mParam.molecularweight;
+		mParam.staticAntibioticConcentration = sParam.startingAntibiotic*6.02e20*mParam.intracellularVolume / mParam.molecularweight;
 	}
     
     //-------------------------------------------------------------------------
