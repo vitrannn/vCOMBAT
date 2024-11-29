@@ -26,11 +26,12 @@ static const char* invocationName = NULL; ///< The full invocation text for the 
 static char* programName; ///< The basename of the program invocation
 int verbose = 0; ///< Specifies whether the program should display verbose output
 
+
 static void argParserShowError(const char* const msg, const int errorCode, const char help);
 static void argParserInternalError(const char* const msg);
 static const char* optname(const int code, const struct ap_Option options[]);
 static void displayHelp(const char* programName);
-static int outputResultsToFile(SimulationParameters sParam, ModelParameters mParam, SimulationResults results, FILE* oHandle);
+static int outputResultsToFile(SimulationParameters* sParam, ModelParameters* mParam, SimulationResults* results, FILE* oHandle);
 
 #define DEFAULT_DUMMY -12345 ///< Definition of dummy value for marking those defaults which must be dynamically calculated
 #define STR_HELPER(x) #x
@@ -50,7 +51,7 @@ int main(const int argc, char** argv) {
 	clock_t t;
 	int argIdx;
 	struct Arg_parser parser;
-	double* stateVector = NULL;
+	ModelVariables* stateVector = NULL;
 	const char* outputFile = NULL;
     const char* outputFileM = NULL;
     const char* inputFile = NULL;
@@ -75,9 +76,11 @@ int main(const int argc, char** argv) {
 		.nonSpecificAssociationRate = DEFAULT_NONSPECIFIC_ASSOCIATION_RATE,
 		.nonSpecificDissociationRate = DEFAULT_NONSPECIFIC_DISSOCIATION_RATE,
 		.timepoints = DEFAULT_TIMEPOINTS,
+		.extendedModel = 0,  
                 .molecularweight= DEFAULT_MOLECULARWEIGHT,
                 .steptime = DEFAULT_STEPTIME,
                 .carryingCapacity = DEFAULT_CARRYING_CAPACITY,
+		.staticAntibioticConcentration = DEFAULT_STARTING_ANTIBIOTIC,
 		.hyperGeometricMatrix = NULL,
 	};
     
@@ -108,11 +111,11 @@ int main(const int argc, char** argv) {
 		{ 'C', "carryingCapacity",        ap_yes },
 		{ 't', "time",                    ap_yes },
 		{ 'd', "startingAntibiotic",      ap_yes },
-                { 'M', "Antibiotic Mol. Weight",  ap_yes },
+		{ 'M', "Antibiotic Mol. Weight",  ap_yes },
 		{ 'p', "startingPopulation",      ap_yes },
 		{ 'o', "outputFile",              ap_yes },
-                { 'm', "outputFileM",             ap_yes },
-                { 'i', "inputFile",               ap_yes },
+		{ 'm', "outputFileM",             ap_yes },
+		{ 'i', "inputFile",               ap_yes },
 		{ 'S', "steppingFunction",        ap_yes }
 	};
 	
@@ -174,7 +177,7 @@ int main(const int argc, char** argv) {
 		case 'd':
 			sscanf(ap_argument(&parser, argIdx), "%lg", &sParam.startingAntibiotic);
 			break;
-                case 'M':
+		case 'M':
 			sscanf(ap_argument(&parser, argIdx), "%lg", &mParam.molecularweight);
 			break;
 		case 'p':
@@ -221,22 +224,42 @@ int main(const int argc, char** argv) {
     double realantibioticconc[mParam.timepoints];
     
     mParam.steptime= sParam.stepSize; 
-     
-     // Reading Antibiotic Concentartion from "input" file 
-    FILE* myFile;
-    myFile = fopen(inputFile, "r");
-    int x;
-    
-    for (x = 0; x<mParam.timepoints;x++){
-    fscanf(myFile, "%lg", &mParam.realantibioticconc[x]);  
-    // Old code: Changing nG/mL to number of molecules: A*1e3*1e-6*6.02e23/MW    //mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e17*mParam.intracellularVolume/mParam.molecularweight;
-        
-    // Newcode by Vi 
-    mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e20*mParam.intracellularVolume/mParam.molecularweight;
 
-    }
-    fclose(myFile);
-    myFile=NULL;
+	if (inputFile != NULL) { 
+		mParam.extendedModel = 1;
+		printf("Running extended model with input file %s\n",inputFile);
+		// Reading Antibiotic Concentartion from "input" file 
+		FILE* myFile;
+		myFile = fopen(inputFile, "r");
+		if (myFile == NULL) {
+			fprintf(stderr, "Could not open %s for reading\n", inputFile);
+			return EXIT_FAILURE;
+		}
+		int x;
+		
+		for (x = 0; x<mParam.timepoints;x++){
+			int parse_success;
+			if (feof(myFile)) {
+				fprintf(stderr,"File ended while attempting to scan entry %d\n",x+1);
+				return EXIT_FAILURE;
+			}
+			parse_success = fscanf(myFile, "%lg", &mParam.realantibioticconc[x]);
+			if (parse_success != 1){
+				fprintf(stderr,"Parsing of entry %d failed\n",x+1);
+				return EXIT_FAILURE;
+			}
+			// Old code: Changing nG/mL to number of molecules: A*1e3*1e-6*6.02e23/MW    //mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e17*mParam.intracellularVolume/mParam.molecularweight;
+				
+			// Newcode by Vi 
+			mParam.realantibioticconc[x]=mParam.realantibioticconc[x]*6.02e20*mParam.intracellularVolume / mParam.molecularweight;
+
+		}
+		fclose(myFile);
+		myFile=NULL;
+	} else {
+		printf("Running without input file with initial antibioctic concentration %lg\n",sParam.startingAntibiotic);
+		mParam.staticAntibioticConcentration = sParam.startingAntibiotic*6.02e20*mParam.intracellularVolume / mParam.molecularweight;
+	}
     
     //-------------------------------------------------------------------------
     
@@ -266,7 +289,9 @@ int main(const int argc, char** argv) {
 		printf("\nStarting simulation with arguments\n");
 		printf("------------------------------------\n\n");
 		printf("Starting population     \t%lg\n", sParam.startingPopulation);
-		//printf("Antibiotic dose         \t%lg\n", sParam.startingAntibiotic);
+		if (!mParam.extendedModel) {
+			printf("Antibiotic dose         \t%lg\n", sParam.startingAntibiotic);
+		}
 		printf("Time of simulation      \t%lg\n", sParam.endTime);
 		printf("Step size               \t%lg\n\n", sParam.stepSize);		
 		printf("Target molecules        \t%d\n", mParam.targetMoleculeCount);
@@ -276,7 +301,7 @@ int main(const int argc, char** argv) {
 		printf("Baseline replication    \t%lg\n", mParam.baselineReplication);
 		printf("Target association rate \t%lg\n", mParam.targetAssociationRate);
 		printf("Target dissociation rate\t%lg\n", mParam.targetDissociationRate);
-                printf("Drug Molecular Weight    \t%lg\n", mParam.molecularweight);
+		printf("Drug Molecular Weight    \t%lg\n", mParam.molecularweight);
 		printf("Carrying capacity       \t%lg\n", mParam.carryingCapacity);
 		printf("Intracellular volume    \t%lg\n", mParam.intracellularVolume);
 	}
@@ -340,8 +365,8 @@ int main(const int argc, char** argv) {
 	// Output a summary of results, if verbose-mode is specified
 	if (verbose) {
 		double populationSum = 0.0;
-		for (i = NUMBER_FREE_KINETIC_VARIABLES; i < mParam.targetMoleculeCount+NUMBER_FREE_KINETIC_VARIABLES + 1; ++i)
-			populationSum += stateVector[i];
+		for (i = 0; i < mParam.targetMoleculeCount + 1; ++i)
+			populationSum += stateVector->CompartmentBoundComplex[i];
 		printf("Results readout\n");
 		printf("---------------\n\n");
 		printf("Final population %g\n\n",populationSum);
@@ -446,8 +471,8 @@ static void displayHelp(const char* programName) {
 	       "   -p, --startingPopulation [population]    : Initial bacterial population.\n"
 	       "                                         default: %lg\n"
 	       "   -S, --steppingFunction [function] : Stepping function to use for the numerical integration.\n"
-	       "                                         where [function] is one of {rk4, rkf45, rkck}\n"
-	       "                                         default: rkck\n"
+	       "                                         where [function] is one of {rk4, rkf45, rkck, rk2}\n"
+	       "                                         default: rk2\n"
 	       "   -t, --time [etime (s)]:[intvl (s)]   : Specifies total simulation time [etime] and interval between time-points [intvl].\n"
 	       "                                         default: %lg:%lg\n\n",
 	       DEFAULT_STARTING_ANTIBIOTIC, DEFAULT_STARTING_POPULATION, DEFAULT_SIMULATION_END_TIME, DEFAULT_SIMULATION_STEP_SIZE);
@@ -455,13 +480,16 @@ static void displayHelp(const char* programName) {
 	printf("                                 MODEL PARAMETERS\n\n"
 	       "   -n, --targetMoleculeCount [Integer Number]     : Number of target molecules in a cell.\n"
 	       "                                            default: %d\n"
-               "   -R, --baselineReplicationRate [rate (1/s)] : Rate of replication for those bacteria below replication threshold.\n"
+		   "   -r, --replicationThreshold [FC*n=Integer Number]     : Number of bound target molecules in a cell to stop relications.\n"
+	       "                                            default: n / 2\n"
+		   "   -R, --baselineReplicationRate [rate (1/s)] : Rate of replication for those bacteria below replication threshold.\n"
 	       "                                            default: %lg\n"
+		   
 	       "   -k, --killingThreshold [FC*n=Integer Number]     : Number of bound target molecules in a cell to cause death.\n"
 	       "                                            default: n / 2\n"
 	       "   -K, --maximumKillingRate [rate (1/s)]      : Rate of death for those bacteria above killing threshold.\n"
 	       "                                            default: %lg\n"
-               "   -M, --molecularweight [weight (gr/mol)]         : Drug Molecular Weight gram per mole.\n"
+           "   -M, --molecularweight [weight (gr/mol)]         : Drug Molecular Weight gram per mole.\n"
 	       "                                            default: %lg\n" 
 	       "   -A, --targetAssociationRate [rate (L/mol/s)]   : Rate constant for association between target and antibiotic.\n"
 	       "                                            default: %lg\n"
@@ -483,16 +511,16 @@ static void displayHelp(const char* programName) {
 
 static int writeNamedDouble(yaml_emitter_t* emitter, yaml_event_t* event, char* name, double value);
 
-static int outputResultsToFile(SimulationParameters sParam, ModelParameters mParam, SimulationResults results, FILE* oHandle) {
+static int outputResultsToFile(SimulationParameters* sParam, ModelParameters* mParam, SimulationResults* results, FILE* oHandle) {
 	yaml_emitter_t emitter;
 	yaml_event_t event;
 	
-	// Intiialize the YAML emitter
+	// Intialize the YAML emitter
 	yaml_emitter_initialize(&emitter);
 	yaml_emitter_set_output_file(&emitter, oHandle);
 	yaml_emitter_set_unicode(&emitter, 1);
 	
-	// Intiialize the YAML stream
+	// Intialize the YAML stream
 	yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING);
 	EMIT_YAML_EVENT;
 	

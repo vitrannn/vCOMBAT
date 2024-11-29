@@ -32,17 +32,17 @@ extern int verbose;
  * @param counter     The number of time-points that have elapsed since the simulation started.
  * @param results     The results structure to be updated with the current simulation summary.
  */
-static void updateSimulationResultsPerTick(const ModelParameters mParam, const ModelVariables state, const double currentTime,
-                                           const int counter, SimulationResults results, const char* output, FILE* oHandleM) {
+static void updateSimulationResultsPerTick(const ModelParameters* mParam, const ModelVariables* state, const double currentTime,
+                                           const int counter, SimulationResults* results, const char* output, FILE* oHandleM) {
 	int i;
 	double populationSum = 0.0;
     int timetocon;
     timetocon=((int)floorl(currentTime/mParam->steptime));
     double plasmaconcenc = mParam->realantibioticconc[timetocon];
-	double* compartmentBoundComplexState = &state->firstCompartmentBoundComplex;
-    //double* compartmentfreeAntibiotic = &state->freeAntibiotic;
-	double* compartmentfreeBoundComplex= &state->freeBoundComplex;
-    double* compartmentfreetarget= &state->freeTarget;
+	const double* compartmentBoundComplexState = state->CompartmentBoundComplex;
+    double compartmentfreeAntibiotic = state->freeAntibiotic;
+	double compartmentfreeBoundComplex= state->freeBoundComplex;
+    double compartmentfreetarget= state->freeTarget;
     
 	for (i = 0; i < mParam->targetMoleculeCount + 1; ++i)
 		populationSum += compartmentBoundComplexState[i];
@@ -56,8 +56,13 @@ static void updateSimulationResultsPerTick(const ModelParameters mParam, const M
         fprintf(oHandleM, "%lf ", compartmentBoundComplexState[i]);
         fprintf(oHandleM, "%lf ", currentTime);
         fprintf(oHandleM, "%lf ", populationSum);
-        fprintf(oHandleM, "%lf ", mParam->realantibioticconc[timetocon]);
-        fprintf(oHandleM, "%lf ", compartmentfreeBoundComplex[i]);
+		if(mParam->extendedModel) {
+			fprintf(oHandleM, "%lf ", mParam->realantibioticconc[timetocon]);
+		} else {
+			fprintf(oHandleM, "%lf ", compartmentfreeAntibiotic);
+		}
+        
+        fprintf(oHandleM, "%lf ", compartmentfreeBoundComplex);
 		fprintf(oHandleM, "\n");
         
 	}
@@ -84,8 +89,8 @@ static void updateSimulationResultsPerTick(const ModelParameters mParam, const M
  *
  * @return              GSL_SUCCESS if everything went well otherwise the GSL error code. 
  */
-int runSimulation(const gsl_odeiv2_step_type* stepping, const ModelParameters mParam, const double endTime,
-                  const double timeInterval, double* stateVector, SimulationResults results, const char* output, FILE* oHandleM) {
+int runSimulation(const gsl_odeiv2_step_type* stepping, const ModelParameters* mParam, const double endTime,
+                  const double timeInterval, ModelVariables* stateVector, SimulationResults* results, const char* output, FILE* oHandleM) {
 	int curTimePoint = 0;
 	int systemSize = NUMBER_FREE_KINETIC_VARIABLES + mParam->targetMoleculeCount + 1;
 	double nextTime = timeInterval;
@@ -101,10 +106,10 @@ int runSimulation(const gsl_odeiv2_step_type* stepping, const ModelParameters mP
 	if (verbose)
 		printf("\ncreating system with %d free variables\n", NUMBER_FREE_KINETIC_VARIABLES + mParam->targetMoleculeCount + 1);
 	
-	gsl_odeiv2_system sys = {(GSLDerivCalcFunc)calculateModelDerivative_BindingOnly, NULL, systemSize, mParam};
+	const gsl_odeiv2_system sys = {(GSLDerivCalcFunc)calculateModelDerivative_BindingOnly, NULL, systemSize, (void*) mParam};
 	gsl_odeiv2_driver* driver = gsl_odeiv2_driver_alloc_y_new (&sys, stepping, timeInterval, 1e-5, 1e-5);
 	
-	updateSimulationResultsPerTick(mParam, (ModelVariables)stateVector, curTime, curTimePoint, results, output, oHandleM);
+	updateSimulationResultsPerTick(mParam, stateVector, curTime, curTimePoint, results, output, oHandleM);
 	
 	while (nextTime < endTime) {
 		int i;
@@ -112,11 +117,11 @@ int runSimulation(const gsl_odeiv2_step_type* stepping, const ModelParameters mP
 		
 		++curTimePoint;
 		
-		if ((status = gsl_odeiv2_driver_apply (driver, &curTime, nextTime, stateVector)) != GSL_SUCCESS) {
+		if ((status = gsl_odeiv2_driver_apply (driver, &curTime, nextTime, (double *) stateVector)) != GSL_SUCCESS) {
 			fprintf (stderr, "error in  gsl_odeiv2_driver_apply: %d (%s)\n", status, gsl_strerror (status));
 			return status;
 		}
-		updateSimulationResultsPerTick(mParam, (ModelVariables)stateVector, curTime, curTimePoint, results, output, oHandleM);
+		updateSimulationResultsPerTick(mParam, stateVector, curTime, curTimePoint, results, output, oHandleM);
 		
 		nextTime += timeInterval;
 	}
@@ -168,15 +173,14 @@ double* generateHypergeometricMatrix(const int populationCount, const int replic
  *
  * @return                     The initialized state vector with antibiotic dose and zero-bound compartments filled with others zeroed.
  */
-double* initializeStateVector(const int targetMoleculeCount, const double startingAntibiotic, const double startingPopulation) {
+ModelVariables* initializeStateVector(const int targetMoleculeCount, const double startingAntibiotic, const double startingPopulation) {
 	int i;
 	int systemSize = NUMBER_FREE_KINETIC_VARIABLES + targetMoleculeCount + 1;
-	double* stateVector = (double*)malloc(sizeof(double) * systemSize);
-	
-	for (i=0; i< systemSize; i++)
-		stateVector[i] = 0.0;
-	stateVector[0] = startingAntibiotic;
-	stateVector[NUMBER_FREE_KINETIC_VARIABLES] = startingPopulation;
+	// calloc does zero the memory before it gives it to us, so it should be fine
+	ModelVariables* stateVector = calloc(systemSize, sizeof(double));
+	stateVector->freeAntibiotic = startingAntibiotic;
+	// At the start of the simulation, none of the bacteria have any antibiotic molecules attached to it
+	stateVector->CompartmentBoundComplex[0] = startingPopulation;
 	
 	return stateVector;
 }

@@ -25,6 +25,7 @@
 #define DEFAULT_TIMEPOINTS 360000.0
 #define DEFAULT_STEPTIME 3600.0
 #define DEFAULT_THRESHOLD 60
+#define DEAULT_STARTING_ANTIBIOTIC 1.0
   
 
 
@@ -56,12 +57,14 @@ typedef struct  _ModelParameters {
 	double nonSpecificDissociationRate; ///< The k parameter for the backward reaction of non-specific binding.
 	double targetAssociationRate;       ///< The k parameter for the forward reaction of specific binding.
 	double targetDissociationRate;      ///< the k parameter for the backward reaction of specific binding.
+	int extendedModel; // Specifies whether the program runs with an input file (extended model) or with a static total antibotic concentration (original model)
 	
 	double carryingCapacity;            ///< The total carrying capacity (maximum population) of the system.
 	double* hyperGeometricMatrix;       ///< The matrix containing the hypergeometric sampling PDFs.
-        double realantibioticconc[];
+	double staticAntibioticConcentration; // In the case we are using the original model instead of the extended model
+    double realantibioticconc[]; // In number of molecules, must be at the end of the struct because it is flexible. Note that this array is uninitialized and its contents are undefined in case we are using the original model
     //double *realantibioticconc; 
-}*ModelParameters;
+} ModelParameters;
 
 /**
  * Used for type-casting the derivative function (which uses structures rather than vectors for lexical ease) into the format expected by GSL.
@@ -71,22 +74,24 @@ typedef int (*GSLDerivCalcFunc)(double, const double*, double*, void*);
 /**
  * Structure to hold all the within-simulation variables. This will be used both for the current-state and also in the calculation
  * of the derivatives in the GSL sub-function. This structure is for the deterministic model so uses concentrations of molecules.
+ * This structure can both be interpreted as an array of doubles, but gives us the convenience of being able to refer to
+ * each field by name
  */
 typedef struct _ModelVariables {
 	/* TODO : Add units for each to the comments
 	*/
-	//double freeAntibiotic;               ///< Concentration of free (extracellular) unbound anti-biotic.
+	double freeAntibiotic;               ///< Concentration of free (extracellular) unbound antibiotic.
 	double freeTarget;                   ///< Concentration of free (extracellular) unbound target molecule.
 	double freeBoundComplex;             ///< Concentration of free (extracellular) bound target/anti-biotic complex.
-	double firstCompartmentBoundComplex; ///< Total number of cells in the first compartment for intracellular bound complex. [GIVEN IN MOLECULES]
-} *ModelVariables;
+	double CompartmentBoundComplex[]; ///< Total number of cells in each compartment for intracellular bound complex. [GIVEN IN MOLECULES]
+} ModelVariables;
 
 ///> Macro extracts the number of "free" compartments. I.e. those concentrations which are not in the array of cells-with-bound-targets
-#define NUMBER_FREE_KINETIC_VARIABLES ((int)((sizeof(struct _ModelVariables) - sizeof(double)) / sizeof(double)))
+#define NUMBER_FREE_KINETIC_VARIABLES 3
 
 int calculateModelDerivative_BindingOnly (double curTime,
-                                          ModelVariables y,
-                                          ModelVariables dydt,
-                                          ModelParameters param);
+                                          const ModelVariables* y,
+                                          ModelVariables* dydt,
+                                          ModelParameters* param);
 
-int sanityCheckModelParameters(ModelParameters param);
+int sanityCheckModelParameters(ModelParameters* param);

@@ -24,14 +24,13 @@
  * @return         GSL_SUCCESS on success. Failure not currently detected.
  */
 int calculateModelDerivative_BindingOnly (double curTime,
-                                          ModelVariables y,
-                                          ModelVariables dydt,
-                                          ModelParameters param) {
+                                          const ModelVariables* y,
+                                          ModelVariables* dydt,
+                                          ModelParameters* param) {
 	int i,j,x;
-	
 	// Extract the intracellular compartment vectors from the state and the derivative structures
-	double* compartmentBoundComplexState = &y->firstCompartmentBoundComplex;
-	double* compartmentBoundComplexDeriv = &dydt->firstCompartmentBoundComplex;
+	const double* compartmentBoundComplexState = y->CompartmentBoundComplex;
+	double* compartmentBoundComplexDeriv = dydt->CompartmentBoundComplex;
 	
 	// TODO: This can be pre-calculated
 	// Scratch space for calculation of $\frac{k_f}{n_AV_i}$
@@ -67,14 +66,23 @@ int calculateModelDerivative_BindingOnly (double curTime,
 	double tmpSum;
 	double* incPointer;
 	
-     //Vi moved from line 150
-    int timetocon;
-    double yfreeAntibiotic;
-    timetocon=((int)floorl(curTime/param->steptime));
+	double yfreeAntibiotic;
+	if (param->extendedModel) {
+     	//Vi moved from line 150
+		int timetocon;
+		timetocon=((int)floorl(curTime/param->steptime));
     
-    // Free Antibiotic Concentrations come from input file, change from yfreeAntibiotic to yfreeAntibiotic by declaring a new code variable
-	yfreeAntibiotic = (curTime-timetocon*param->steptime)*(param->realantibioticconc[timetocon+1] - param->realantibioticconc[timetocon])/param->steptime +param->realantibioticconc[timetocon];
-    //end change--------------
+		// Free Antibiotic Concentrations come from input file, change from yfreeAntibiotic to yfreeAntibiotic by declaring a new code variable
+		// Makes a linear interpolation of the antibiotic concentrations
+		yfreeAntibiotic = (curTime-timetocon*param->steptime)*(param->realantibioticconc[timetocon+1] - param->realantibioticconc[timetocon])/param->steptime +param->realantibioticconc[timetocon];
+
+		//end change--------------
+	} else {
+		yfreeAntibiotic = y->freeAntibiotic;
+	}
+    
+    
+    
     
 	// Calculation of $\frac{k_f}{n_AV_i}$
 	scratchVolumeModifiedK = param->targetAssociationRate / (AVOGADRO_CONSTANT * param->intracellularVolume);
@@ -152,7 +160,13 @@ int calculateModelDerivative_BindingOnly (double curTime,
     // Free Antibiotic Concentrations come from input file
     //y->freeAntibiotic = param->realantibioticconc[timetocon];
     // Calculation of $\frac{dA}{dt}$
-	//dydt->freeAntibiotic = (scratchSumReverse - scratchSumForward)- scratchAntibioticTarget;
+	if (!param->extendedModel) {
+		dydt->freeAntibiotic = (scratchSumReverse - scratchSumForward)- scratchAntibioticTarget;
+	} else{
+		// This is intended to prevent the ODE solver from getting confused from using an unintialized values for $\frac{dA}{dt}$,
+		// we ignore the result anyway
+		dydt->freeAntibiotic = 0.0;
+	}
 
 	// Calculation of $\frac{dT}{dt}$
 	dydt->freeTarget = scratchSumDeath1 - scratchAntibioticTarget;
@@ -168,7 +182,7 @@ int calculateModelDerivative_BindingOnly (double curTime,
  *
  * @return       0 on success, otherwise -1
  */
-int sanityCheckModelParameters(ModelParameters param) {
+int sanityCheckModelParameters(ModelParameters* param) {
 	int goodFlag = 0;
 	if (param->baselineReplication < 0) {
 		fprintf(stderr, "Baseline replication was out of range. Must be R > 0.\n");
@@ -200,6 +214,10 @@ int sanityCheckModelParameters(ModelParameters param) {
 	}
 	if (param->carryingCapacity < 0.0) {
 		fprintf(stderr, "Carrying capacity was out of range. Must be C > 0.\n");
+		--goodFlag;
+	}
+	if (param->staticAntibioticConcentration < 0.0) {
+		fprintf(stderr, "Initial antibiotic concentration was out of range. Must be d > 0. \n");
 		--goodFlag;
 	}
 	if (param->intracellularVolume < 0.0) {
